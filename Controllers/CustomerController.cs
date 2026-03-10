@@ -23,5 +23,25 @@ namespace minibank.Controllers
 
             return Ok(result);
         }
+
+        [HttpGet]
+        public async Task<IActionResult> GetAll()
+        {
+            return Ok(await _customerService.GetAllCustomersAsync());
+        }
+
+        [HttpGet("search")]
+        public async Task<IActionResult> Search ([FromQuery] string name)
+        {
+            return Ok(await _customerService.SearchCustomersAsync(name));
+        }
+
+        [HttpGet("{id}")]
+        public async Task<IActionResult> GetById(int id)
+        {
+            var result = await _customerService.GetCustomerByIdAsync(id);
+            if(!result.Success)return NotFound(result);
+            return Ok(result);
+        }
     }
 }

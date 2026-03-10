@@ -37,5 +37,33 @@ namespace minibank.Services
 
             //throw new NotImplementedException();
         }
+        public async Task<ApiResponse<List<Customer>>> GetAllCustomersAsync()
+        {
+            var customers = await _context.Customers.ToListAsync();
+            return ApiResponse<List<Customer>>.SuccessResponse(customers);
+
+        }
+        public async Task<ApiResponse<List<Customer>>> SearchCustomersAsync(string query)
+        {
+            var customer = await _context.Customers
+            .Where(c=>c.FirstName.Contains(query)|| c.LastName.Contains(query)
+            ||c.PersonalId.Contains(query)).ToListAsync();
+
+            return ApiResponse<List<Customer>>.SuccessResponse(customer);
+        }
+
+        public async Task<ApiResponse<Customer>> GetCustomerByIdAsync(int id)
+        {
+            var customer = await _context.Customers
+            .Include(c=>c.Accounts)
+            .FirstOrDefaultAsync(c=>c.Id == id);
+
+            if(customer == null)return ApiResponse<Customer>.FailureResponse("Customer not found");
+            
+            return ApiResponse<Customer>.SuccessResponse(customer);
+
+        }
+
+       
     }
 }

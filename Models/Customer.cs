@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
-using MINIBANK.Enums;
-namespace MINIBANK.Models
+using minibank.Enums;
+namespace minibank.Models
 {
     public class Customer
     {

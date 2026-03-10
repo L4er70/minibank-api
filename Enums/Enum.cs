@@ -1,4 +1,4 @@
-namespace MINIBANK.Enums
+namespace minibank.Enums
 {
     public enum AccountType
     {

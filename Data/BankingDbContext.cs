@@ -1,7 +1,7 @@
-using MINIBANK.Models;
+using minibank.Models;
 using Microsoft.EntityFrameworkCore;
 
-namespace MINIBANK.Data
+namespace minibank.Data
 {
     public class BankingDbContext : DbContext
     {

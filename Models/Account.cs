@@ -1,7 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.Transactions;
-using MINIBANK.Enums;
-namespace MINIBANK.Models
+using minibank.Enums;
+namespace minibank.Models
 {
     public class Account
     {

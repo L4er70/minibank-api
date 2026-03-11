@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("minibank")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+3e3b8eeaf8a698f8a7b532dc9cc517f8a904a897")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+ed98fbd74989ac7a2296dd701f93689130d773cc")]
 [assembly: System.Reflection.AssemblyProductAttribute("minibank")]
 [assembly: System.Reflection.AssemblyTitleAttribute("minibank")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

@@ -8,6 +8,7 @@ builder.Services.AddControllers();
 builder.Services.AddDbContext<BankingDbContext>(options =>
 options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
 builder.Services.AddScoped<ICustomerService,CustomerService>();
+builder.Services.AddScoped<IAccountService,AccountService>();
 
 // Add services to the container.
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle

@@ -23,6 +23,7 @@ namespace minibank.Services
                 return ApiResponse<TransactionDto>.FailureResponse("Amount must be greater than zero.");
             }
 
+            // Load account to validate existence and update balance.
             var account = await _context.Accounts
                 .FirstOrDefaultAsync(a => a.Id == dto.AccountId);
 
@@ -36,6 +37,7 @@ namespace minibank.Services
                 return ApiResponse<TransactionDto>.FailureResponse("Insufficient funds.");
             }
 
+            // Create transaction and apply balance change in one unit of work.
             var transaction = new Transaction
             {
                 AccountId = account.Id,
@@ -52,6 +54,7 @@ namespace minibank.Services
             _context.Transactions.Add(transaction);
             await _context.SaveChangesAsync();
 
+            // Map to DTO for API response.
             var result = new TransactionDto
             {
                 Id = transaction.Id,
@@ -66,6 +69,7 @@ namespace minibank.Services
 
         public async Task<ApiResponse<List<AccountDto>>> GetAccountByCustomerIdAsync(int customerId)
         {
+            // Project to DTO to avoid loading full entities.
             var accounts = await _context.Accounts
             .Where(a=>a.CustomerId == customerId)
             .Select(a=>new AccountDto
@@ -84,6 +88,7 @@ namespace minibank.Services
 
         public async Task<ApiResponse<AccountDto>> GetAccountDetailsAsync(int accountId)
         {
+            // Fetch a single account summary by id.
             var account =await _context.Accounts
             .Where(a=>a.Id == accountId).Select(
                 a=>new AccountDto
@@ -106,6 +111,7 @@ namespace minibank.Services
 
         public async Task<ApiResponse<List<TransactionDto>>> GetAccountTransactionAsync(int accountId)
         {
+            // Return all transactions for the given account.
             var transactions =await _context.Transactions
             .Where(t=>t.AccountId==accountId)
             .Select(t=> new TransactionDto

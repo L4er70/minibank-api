@@ -1,3 +1,13 @@
+# .NET Build Folders
+[Bb]in/
+[Oo]bj/
+
+# SQLite Database
 *.db
 *.db-shm
 *.db-wal
+
+# VS Code / User Specific
+.vscode/
+.idea/
+*.user

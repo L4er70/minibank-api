@@ -1,8 +1,10 @@
 using minibank.Data;
 using minibank.DTOs;
+using minibank.Models;
 using minibank.Services.Interfaces;
 using minibank.Wrappers;
 using Microsoft.EntityFrameworkCore;
+using minibank.Enums;
 
 namespace minibank.Services
 {
@@ -13,6 +15,55 @@ namespace minibank.Services
         {
             _context = context;
         }
+
+        public async Task<ApiResponse<TransactionDto>> CreateTransactionAsync(PostTransactionDto dto)
+        {
+            if (dto.Amount <= 0)
+            {
+                return ApiResponse<TransactionDto>.FailureResponse("Amount must be greater than zero.");
+            }
+
+            var account = await _context.Accounts
+                .FirstOrDefaultAsync(a => a.Id == dto.AccountId);
+
+            if (account == null)
+            {
+                return ApiResponse<TransactionDto>.FailureResponse("Account not found.");
+            }
+
+            if (dto.TransactionType == TransactionType.Debit && account.Balance < dto.Amount)
+            {
+                return ApiResponse<TransactionDto>.FailureResponse("Insufficient funds.");
+            }
+
+            var transaction = new Transaction
+            {
+                AccountId = account.Id,
+                Amount = dto.Amount,
+                Type = dto.TransactionType,
+                Description = dto.Description ?? string.Empty,
+                TransactionDate = DateTime.UtcNow
+            };
+
+            account.Balance = dto.TransactionType == TransactionType.Credit
+                ? account.Balance + dto.Amount
+                : account.Balance - dto.Amount;
+
+            _context.Transactions.Add(transaction);
+            await _context.SaveChangesAsync();
+
+            var result = new TransactionDto
+            {
+                Id = transaction.Id,
+                Amount = transaction.Amount,
+                Type = transaction.Type.ToString(),
+                Description = transaction.Description,
+                TransactionDate = transaction.TransactionDate
+            };
+
+            return ApiResponse<TransactionDto>.SuccessResponse(result, "Transaction created.");
+        }
+
         public async Task<ApiResponse<List<AccountDto>>> GetAccountByCustomerIdAsync(int customerId)
         {
             var accounts = await _context.Accounts

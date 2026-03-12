@@ -39,6 +39,14 @@ namespace minibank.Controllers
             if(!result.Success)return NotFound(result);
             return Ok(result);
         }
+
+        [HttpPost("transactions")]
+        public async Task<IActionResult> CreateTransaction([FromBody] PostTransactionDto dto)
+        {
+            var result = await _accountService.CreateTransactionAsync(dto);
+            if (!result.Success) return BadRequest(result);
+            return Ok(result);
+        }
     }
 
    

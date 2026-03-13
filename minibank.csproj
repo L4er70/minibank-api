@@ -17,4 +17,10 @@
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Remove="minibank.Tests/**" />
+    <EmbeddedResource Remove="minibank.Tests/**" />
+    <None Remove="minibank.Tests/**" />
+  </ItemGroup>
+
 </Project>

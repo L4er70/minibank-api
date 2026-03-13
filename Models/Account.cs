@@ -10,7 +10,7 @@ namespace minibank.Models
         [MaxLength(30)]
         public string AccountNumber{get;set;} = string.Empty; //IBAN
 
-        public decimal Balance{get;set;} =0;
+        public decimal Balance{get;set;} = 0;
         public Currency Currency{get;set;}
         public AccountType AccountType{get;set;}
 

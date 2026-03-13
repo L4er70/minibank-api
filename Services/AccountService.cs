@@ -16,6 +16,41 @@ namespace minibank.Services
             _context = context;
         }
 
+        public async Task<ApiResponse<AccountDto>> CreateAccountAsync(CreateAccountDto dto)
+        {
+           var customerExists = await _context.Customers.AnyAsync(
+            c=>c.Id == dto.CustomerId
+           );
+           if(!customerExists) return ApiResponse<AccountDto>.FailureResponse("Customer does not exists");
+
+           string newIban = $"AL{new Random().Next(10,99)}BKT777{new Random().Next(100000,999999)}";
+
+
+           var newAccount = new Account
+           {
+               CustomerId = dto.CustomerId,
+               AccountNumber = newIban,
+               Balance=0,
+               Currency =dto.currency,
+               BranchCode = dto.BranchCode,
+               CreatedAt = DateTime.UtcNow
+           };
+
+           _context.Accounts.Add(newAccount);
+           await _context.SaveChangesAsync();
+
+           return ApiResponse<AccountDto>.SuccessResponse(new AccountDto
+           {
+               Id = newAccount.Id,
+               AccountNumber = newAccount.AccountNumber,
+               Balance = newAccount.Balance,
+               Currency = newAccount.Currency.ToString(),
+               AccountType = newAccount.AccountType.ToString(),
+               CreatedAt = newAccount.CreatedAt
+           });
+           // throw new NotImplementedException();
+        }
+
         public async Task<ApiResponse<TransactionDto>> CreateTransactionAsync(PostTransactionDto dto)
         {
             if (dto.Amount <= 0)

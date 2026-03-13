@@ -8,5 +8,6 @@ namespace minibank.Services.Interfaces
         Task<ApiResponse<AccountDto>> GetAccountDetailsAsync(int accountId);
         Task<ApiResponse<List<TransactionDto>>> GetAccountTransactionAsync(int accountId);
         Task<ApiResponse<TransactionDto>> CreateTransactionAsync(PostTransactionDto dto);
+        Task<ApiResponse<AccountDto>> CreateAccountAsync(CreateAccountDto dto);
     }
 }

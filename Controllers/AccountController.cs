@@ -47,6 +47,13 @@ namespace minibank.Controllers
             if (!result.Success) return BadRequest(result);
             return Ok(result);
         }
+        [HttpPost]
+        public async Task<IActionResult> CreateAccount([FromBody] CreateAccountDto dto)
+        {
+            var result = await _accountService.CreateAccountAsync(dto);
+            if(!result.Success)return BadRequest(result);
+            return Ok(result);
+        }
     }
 
    

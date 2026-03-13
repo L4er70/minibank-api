@@ -9,9 +9,9 @@ namespace minibank.Data
         {
             
         }
-        public DbSet<Customer> Customers{get;set;}
-        public DbSet<Account>Accounts{get;set;}
-        public DbSet<Transaction> Transactions{get;set;}
+        public virtual DbSet<Customer> Customers{get;set;}
+        public virtual DbSet<Account>Accounts{get;set;}
+        public virtual DbSet<Transaction> Transactions{get;set;}
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

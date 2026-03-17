@@ -8,6 +8,7 @@ function App() {
   const[showSuccess,setShowSuccess] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
 const [accounts, setAccounts] = useState([]);
+const[searchQuery,setSearchQuery] = useState('');
   
   
   // 1. Form State
@@ -39,6 +40,17 @@ const [accounts, setAccounts] = useState([]);
       [e.target.name]: e.target.value
     });
   };
+
+  //filter
+const filteredCustomers = customers.filter(c => 
+  c.firstName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+  c.lastName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+  c.personalId.toLowerCase().includes(searchQuery.toLowerCase())
+);
+
+
+
+
 
   //handle view account
   const handleViewAccounts = async(customer)=>{
@@ -126,6 +138,20 @@ const [accounts, setAccounts] = useState([]);
           </form>
         </div>
 
+        <div className="mb-4 relative">
+  <input
+    type="text"
+    placeholder="Search by name or Personal ID..."
+    value={searchQuery}
+    onChange={(e) => setSearchQuery(e.target.value)}
+    className="w-full p-3 pl-10 border rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 outline-none"
+  />
+  <span className="absolute left-3 top-3.5 text-gray-400">
+    🔍
+  </span>
+</div>
+
+
         {/* --- CUSTOMER TABLE --- */}
         <div className="bg-white shadow-md rounded-lg overflow-hidden border border-gray-200">
           <table className="min-w-full divide-y divide-gray-200">
@@ -138,7 +164,7 @@ const [accounts, setAccounts] = useState([]);
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {customers.map((c) => (
+              {filteredCustomers.map((c) => (
                 <tr key={c.id} className="hover:bg-blue-50 transition">
                   <td className="px-6 py-4 text-sm text-gray-500">#{c.id}</td>
                   <td className="px-6 py-4 text-sm font-medium text-gray-900">{c.firstName} {c.lastName}</td>

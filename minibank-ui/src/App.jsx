@@ -1,10 +1,14 @@
 import { useState, useEffect } from 'react';
 import api from './api/axios';
+import { cache } from 'react';
 
 function App() {
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const[showSuccess,setShowSuccess] = useState(false);
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
+const [accounts, setAccounts] = useState([]);
+  
   
   // 1. Form State
   const [formData, setFormData] = useState({
@@ -34,6 +38,18 @@ function App() {
       ...formData,
       [e.target.name]: e.target.value
     });
+  };
+
+  //handle view account
+  const handleViewAccounts = async(customer)=>{
+    setSelectedCustomer(customer);
+    try{
+      const response = await api.get(`/Account/customer/${customer.id}`);
+      setAccounts(response.data.data || []);
+    }catch(error){
+      console.error("Error fetching accounts: ",error);
+      setAccounts([]);
+    }
   };
 
   // 3. Submit to Backend
@@ -118,6 +134,7 @@ function App() {
                 <th className="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase">ID</th>
                 <th className="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase">Full Name</th>
                 <th className="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase">ID Number</th>
+                <th className="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase">Actions</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -126,10 +143,57 @@ function App() {
                   <td className="px-6 py-4 text-sm text-gray-500">#{c.id}</td>
                   <td className="px-6 py-4 text-sm font-medium text-gray-900">{c.firstName} {c.lastName}</td>
                   <td className="px-6 py-4 text-sm text-gray-600 font-mono">{c.personalId}</td>
+                  <td className="px-6 py-4 text-sm">
+  <button 
+    onClick={() => handleViewAccounts(c)}
+    className="text-blue-600 hover:text-blue-900 font-semibold"
+  >
+    View Accounts
+  </button>
+</td>
                 </tr>
               ))}
             </tbody>
           </table>
+          {selectedCustomer && (
+  <div className="mt-12 bg-white p-6 rounded-lg shadow-inner border-t-4 border-blue-900 animate-fadeIn">
+    <div className="flex justify-between items-center mb-4">
+      <h2 className="text-xl font-bold text-gray-800">
+        Accounts for {selectedCustomer.firstName} {selectedCustomer.lastName}
+      </h2>
+      <button 
+        onClick={() => setSelectedCustomer(null)}
+        className="text-gray-400 hover:text-gray-600"
+      >
+        Close ✕
+      </button>
+    </div>
+
+    {accounts.length > 0 ? (
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {accounts.map(acc => (
+          <div key={acc.id} className="p-4 border rounded-lg bg-gray-50 flex justify-between items-center">
+            <div>
+              <p className="text-xs text-gray-500 uppercase font-bold">{acc.accountType}</p>
+              <p className="text-lg font-mono">{acc.accountNumber}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-sm text-gray-500">Balance</p>
+              <p className="text-xl font-bold text-green-700">${acc.balance.toLocaleString()}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    ) : (
+      <div className="text-center py-8 border-2 border-dashed rounded-lg">
+        <p className="text-gray-500 mb-4">No accounts found for this customer.</p>
+        <button className="bg-blue-900 text-white px-4 py-2 rounded text-sm">
+          + Open New Account
+        </button>
+      </div>
+    )}
+  </div>
+)}
         </div>
       </div>
     </div>

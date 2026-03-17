@@ -89,9 +89,9 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
+    <div className="min-h-screen bg-gray-50 p-8 flex justify-center">
       <SuccessToast show={showSuccess} message="✅ Customer Registered Successfully!" />
-      <div className="max-w-4xl mx-auto">
+      <div className="w-full max-w-6xl">
         <Header />
         <RegisterForm
           formData={formData}

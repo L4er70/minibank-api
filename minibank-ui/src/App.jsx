@@ -33,7 +33,7 @@ function App() {
 
     if (!amount || amount <= 0) {
       alert('Please enter a valid amount.');
-      return;
+      return false;
     }
 
     try {
@@ -50,10 +50,13 @@ function App() {
         alert(`${type} successful!`);
         setAmounts((currentAmounts) => ({ ...currentAmounts, [accountId]: '' }));
         await fetchAccountsForCustomer(selectedCustomer);
+        return true;
       }
     } catch (error) {
       alert(error.response?.data?.message || 'Transaction failed');
     }
+
+    return false;
   };
 
   

@@ -157,6 +157,7 @@ namespace minibank.Services
             // Return all transactions for the given account.
             var transactions =await _context.Transactions
             .Where(t=>t.AccountId==accountId)
+            .OrderByDescending(t=>t.TransactionDate)
             .Select(t=> new TransactionDto
             {
                 Id = t.Id,
@@ -166,7 +167,12 @@ namespace minibank.Services
                 TransactionDate = t.TransactionDate
             }).ToListAsync();
 
-            return ApiResponse<List<TransactionDto>>.SuccessResponse(transactions);
+            if (!transactions.Any())
+            {
+                return ApiResponse<List<TransactionDto>>.FailureResponse("No transaction found for this account.");
+            }
+
+            return ApiResponse<List<TransactionDto>>.SuccessResponse(transactions,"Transactions retrieved.");
             //throw new NotImplementedException();
         }
     }

@@ -102,11 +102,19 @@ function AccountsPanel({
     }
   };
 
-  const formatCurrency = (value) =>
-    new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD'
-    }).format(value);
+  const formatCurrency = (value, currency = 'USD') => {
+    try {
+      return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency
+      }).format(value);
+    } catch {
+      return `${Number(value).toLocaleString('en-US', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      })} ${currency}`;
+    }
+  };
 
   const formatDate = (value) =>
     new Date(value).toLocaleString('en-US', {
@@ -198,7 +206,7 @@ function AccountsPanel({
                   <div className="text-right">
                     <p className="text-sm text-gray-500">Balance</p>
                     <p className="text-xl font-bold text-green-700">
-                      {formatCurrency(account.balance)}
+                      {formatCurrency(account.balance, account.currency)}
                     </p>
                   </div>
                 </div>
@@ -267,7 +275,7 @@ function AccountsPanel({
                               }`}
                             >
                               {transaction.type === 'Credit' ? '+' : '-'}
-                              {formatCurrency(transaction.amount)}
+                              {formatCurrency(transaction.amount, account.currency)}
                             </p>
                           </div>
                         ))}

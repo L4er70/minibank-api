@@ -1,9 +1,17 @@
-function AccountsPanel({ selectedCustomer, accounts, onClose }) {
+/* eslint-disable react/prop-types */
+function AccountsPanel({
+  selectedCustomer,
+  accounts,
+  amounts,
+  onAmountChange,
+  onTransaction,
+  onClose
+}) {
   if (!selectedCustomer) return null;
 
   return (
     <div className="mt-12 bg-white p-6 rounded-lg shadow-inner border-t-4 border-blue-900 animate-fadeIn">
-      <div className="flex justify-between items-center mb-4">
+      <div className="mb-4 flex items-center justify-between">
         <h2 className="text-xl font-bold text-gray-800">
           Accounts for {selectedCustomer.firstName} {selectedCustomer.lastName}
         </h2>
@@ -13,29 +21,56 @@ function AccountsPanel({ selectedCustomer, accounts, onClose }) {
       </div>
 
       {accounts.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {accounts.map((account) => (
-            <div
-              key={account.id}
-              className="p-4 border rounded-lg bg-gray-50 flex justify-between items-center"
-            >
-              <div>
-                <p className="text-xs text-gray-500 uppercase font-bold">{account.accountType}</p>
-                <p className="text-lg font-mono">{account.accountNumber}</p>
+            <div key={account.id} className="rounded-lg border bg-gray-50 p-4">
+              <div className="mb-4 flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-bold uppercase text-gray-500">
+                    {account.accountType}
+                  </p>
+                  <p className="text-lg font-mono">{account.accountNumber}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm text-gray-500">Balance</p>
+                  <p className="text-xl font-bold text-green-700">
+                    ${account.balance.toLocaleString()}
+                  </p>
+                </div>
               </div>
-              <div className="text-right">
-                <p className="text-sm text-gray-500">Balance</p>
-                <p className="text-xl font-bold text-green-700">
-                  ${account.balance.toLocaleString()}
-                </p>
+
+              <div className="space-y-3">
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="Enter amount"
+                  value={amounts[account.id] || ''}
+                  onChange={(event) => onAmountChange(account.id, event.target.value)}
+                  className="w-full rounded border p-2 outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => onTransaction(account.id, 'Deposit')}
+                    className="flex-1 rounded bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700"
+                  >
+                    Deposit
+                  </button>
+                  <button
+                    onClick={() => onTransaction(account.id, 'Withdraw')}
+                    className="flex-1 rounded bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700"
+                  >
+                    Withdraw
+                  </button>
+                </div>
               </div>
             </div>
           ))}
         </div>
       ) : (
-        <div className="text-center py-8 border-2 border-dashed rounded-lg">
-          <p className="text-gray-500 mb-4">No accounts found for this customer.</p>
-          <button className="bg-blue-900 text-white px-4 py-2 rounded text-sm">
+        <div className="rounded-lg border-2 border-dashed py-8 text-center">
+          <p className="mb-4 text-gray-500">No accounts found for this customer.</p>
+          <button className="rounded bg-blue-900 px-4 py-2 text-sm text-white">
             + Open New Account
           </button>
         </div>

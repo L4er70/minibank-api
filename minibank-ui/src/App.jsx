@@ -9,11 +9,53 @@ import SuccessToast from './components/SuccessToast';
 
 function App() {
   const [customers, setCustomers] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [showSuccess, setShowSuccess] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [accounts, setAccounts] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [amounts, setAmounts] = useState({});
+
+  const fetchAccountsForCustomer = async (customer) => {
+    if (!customer) return;
+
+    try {
+      const response = await api.get(`/Account/customer/${customer.id}`);
+      setAccounts(response.data.data || []);
+    } catch (error) {
+      console.error('Error fetching accounts: ', error);
+      setAccounts([]);
+    }
+  };
+
+  // handle transactions
+  const handleTransaction = async (accountId, type) => {
+    const amount = parseFloat(amounts[accountId]);
+
+    if (!amount || amount <= 0) {
+      alert('Please enter a valid amount.');
+      return;
+    }
+
+    try {
+      const payload = {
+        accountId,
+        amount,
+        transactionType: type === 'Deposit' ? 0 : 1,
+        description: `${type} via Web Portal`
+      };
+
+      const response = await api.post('/Account/transactions', payload);
+
+      if (response.data.success) {
+        alert(`${type} successful!`);
+        setAmounts((currentAmounts) => ({ ...currentAmounts, [accountId]: '' }));
+        await fetchAccountsForCustomer(selectedCustomer);
+      }
+    } catch (error) {
+      alert(error.response?.data?.message || 'Transaction failed');
+    }
+  };
+
   
   
   // 1. Form State
@@ -28,7 +70,6 @@ function App() {
     try {
       const response = await api.get('/customers');
       setCustomers(response.data.data || []);
-      setLoading(false);
     } catch (error) {
       console.error("Error fetching data:", error);
     }
@@ -60,13 +101,11 @@ function App() {
   //handle view account
   const handleViewAccounts = async (customer) => {
     setSelectedCustomer(customer);
-    try {
-      const response = await api.get(`/Account/customer/${customer.id}`);
-      setAccounts(response.data.data || []);
-    } catch (error) {
-      console.error("Error fetching accounts: ", error);
-      setAccounts([]);
-    }
+    fetchAccountsForCustomer(customer);
+  };
+
+  const handleAmountChange = (accountId, value) => {
+    setAmounts((currentAmounts) => ({ ...currentAmounts, [accountId]: value }));
   };
 
   // 3. Submit to Backend
@@ -109,6 +148,9 @@ function App() {
         <AccountsPanel
           selectedCustomer={selectedCustomer}
           accounts={accounts}
+          amounts={amounts}
+          onAmountChange={handleAmountChange}
+          onTransaction={handleTransaction}
           onClose={() => setSelectedCustomer(null)}
         />
       </div>

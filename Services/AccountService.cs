@@ -53,11 +53,11 @@ namespace minibank.Services
 
         public async Task<ApiResponse<TransactionDto>> CreateTransactionAsync(PostTransactionDto dto)
         {
-            if (dto.Amount <= 0)
-            {
-                return ApiResponse<TransactionDto>.FailureResponse("Amount must be greater than zero.");
-            }
+            if (dto.Amount <= 0)return ApiResponse<TransactionDto>.FailureResponse("Amount must be greater than zero.");
 
+            using var dbTransaction = await _context.Database.BeginTransactionAsync();
+
+            try{
             // Load account to validate existence and update balance.
             var account = await _context.Accounts
                 .FirstOrDefaultAsync(a => a.Id == dto.AccountId);
@@ -89,6 +89,8 @@ namespace minibank.Services
             _context.Transactions.Add(transaction);
             await _context.SaveChangesAsync();
 
+            await dbTransaction.CommitAsync();
+
             // Map to DTO for API response.
             var result = new TransactionDto
             {
@@ -100,6 +102,12 @@ namespace minibank.Services
             };
 
             return ApiResponse<TransactionDto>.SuccessResponse(result, "Transaction created.");
+            }
+            catch (Exception)
+            {
+                await dbTransaction.RollbackAsync();
+                return ApiResponse<TransactionDto>.FailureResponse("A database error occured. Money was not moved.");
+            }
         }
 
         public async Task<ApiResponse<List<AccountDto>>> GetAccountByCustomerIdAsync(int customerId)

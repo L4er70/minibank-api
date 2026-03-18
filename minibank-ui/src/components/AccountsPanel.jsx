@@ -8,11 +8,19 @@ function AccountsPanel({
   amounts,
   onAmountChange,
   onTransaction,
+  onAccountsChanged,
   onClose
 }) {
   const [expandedAccountId, setExpandedAccountId] = useState(null);
   const [historyByAccount, setHistoryByAccount] = useState({});
   const [historyLoadingId, setHistoryLoadingId] = useState(null);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [createAccountLoading, setCreateAccountLoading] = useState(false);
+  const [createAccountForm, setCreateAccountForm] = useState({
+    accountType: 0,
+    currency: 2,
+    branchCode: 'BKT01'
+  });
 
   if (!selectedCustomer) return null;
 
@@ -55,6 +63,45 @@ function AccountsPanel({
     }
   };
 
+  const handleCreateAccountChange = (event) => {
+    const { name, value } = event.target;
+    setCreateAccountForm((currentForm) => ({
+      ...currentForm,
+      [name]: name === 'branchCode' ? value : Number(value)
+    }));
+  };
+
+  const handleCreateAccount = async (event) => {
+    event.preventDefault();
+    setCreateAccountLoading(true);
+
+    try {
+      const payload = {
+        customerId: selectedCustomer.id,
+        currency: createAccountForm.currency,
+        accountType: createAccountForm.accountType,
+        branchCode: createAccountForm.branchCode.trim() || 'BKT01'
+      };
+
+      const response = await api.post('/Account', payload);
+
+      if (response.data.success) {
+        alert('Account created successfully.');
+        setCreateAccountForm({
+          accountType: 0,
+          currency: 2,
+          branchCode: 'BKT01'
+        });
+        setShowCreateForm(false);
+        await onAccountsChanged(selectedCustomer);
+      }
+    } catch (error) {
+      alert(error.response?.data?.message || 'Could not create account.');
+    } finally {
+      setCreateAccountLoading(false);
+    }
+  };
+
   const formatCurrency = (value) =>
     new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -76,10 +123,61 @@ function AccountsPanel({
         <h2 className="text-xl font-bold text-gray-800">
           Accounts for {selectedCustomer.firstName} {selectedCustomer.lastName}
         </h2>
-        <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-          Close ✕
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowCreateForm((currentValue) => !currentValue)}
+            className="rounded bg-blue-900 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-800"
+          >
+            {showCreateForm ? 'Cancel' : '+ Open New Account'}
+          </button>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            Close ✕
+          </button>
+        </div>
       </div>
+
+      {showCreateForm && (
+        <form
+          onSubmit={handleCreateAccount}
+          className="mb-6 grid grid-cols-1 gap-4 rounded-lg border border-blue-100 bg-blue-50 p-4 md:grid-cols-4"
+        >
+          <select
+            name="accountType"
+            value={createAccountForm.accountType}
+            onChange={handleCreateAccountChange}
+            className="rounded border p-2 outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value={0}>Current</option>
+            <option value={1}>Savings</option>
+          </select>
+          <select
+            name="currency"
+            value={createAccountForm.currency}
+            onChange={handleCreateAccountChange}
+            className="rounded border p-2 outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value={0}>ALL</option>
+            <option value={1}>EUR</option>
+            <option value={2}>USD</option>
+            <option value={3}>GBP</option>
+          </select>
+          <input
+            type="text"
+            name="branchCode"
+            value={createAccountForm.branchCode}
+            onChange={handleCreateAccountChange}
+            placeholder="Branch code"
+            className="rounded border p-2 outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <button
+            type="submit"
+            disabled={createAccountLoading}
+            className="rounded bg-blue-900 px-4 py-2 font-semibold text-white hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-70"
+          >
+            {createAccountLoading ? 'Creating...' : 'Create Account'}
+          </button>
+        </form>
+      )}
 
       {accounts.length > 0 ? (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -188,7 +286,10 @@ function AccountsPanel({
       ) : (
         <div className="rounded-lg border-2 border-dashed py-8 text-center">
           <p className="mb-4 text-gray-500">No accounts found for this customer.</p>
-          <button className="rounded bg-blue-900 px-4 py-2 text-sm text-white">
+          <button
+            onClick={() => setShowCreateForm(true)}
+            className="rounded bg-blue-900 px-4 py-2 text-sm text-white"
+          >
             + Open New Account
           </button>
         </div>

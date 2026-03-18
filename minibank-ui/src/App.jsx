@@ -154,6 +154,7 @@ function App() {
           amounts={amounts}
           onAmountChange={handleAmountChange}
           onTransaction={handleTransaction}
+          onAccountsChanged={fetchAccountsForCustomer}
           onClose={() => setSelectedCustomer(null)}
         />
       </div>

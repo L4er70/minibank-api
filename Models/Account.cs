@@ -23,5 +23,7 @@ namespace minibank.Models
 
         public Customer Customer{get;set;} = null!; //the owner of the account
         public List<Transaction> Transactions{get;set;}= new List<Transaction>();//1:N
+
+        public bool IsActive{get;set;} = true;
     }
 }

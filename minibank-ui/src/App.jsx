@@ -27,8 +27,25 @@ function App() {
     }
   };
 
+  const closeAccount = async (accountId) => {
+    const response = await api.patch(`/Account/${accountId}/close`);
+    return response.data;
+  };
+
+  const reopenAccount = async (accountId) => {
+    const response = await api.patch(`/Account/${accountId}/reopen`);
+    return response.data;
+  };
+
   // handle transactions
   const handleTransaction = async (accountId, type) => {
+    const account = accounts.find((currentAccount) => currentAccount.id === accountId);
+
+    if (account && !account.isActive) {
+      alert('This account is closed. No transactions can be made.');
+      return false;
+    }
+
     const amount = parseFloat(amounts[accountId]);
 
     if (!amount || amount <= 0) {
@@ -54,6 +71,39 @@ function App() {
       }
     } catch (error) {
       alert(error.response?.data?.message || 'Transaction failed');
+    }
+
+    return false;
+  };
+
+  const handleCloseAccount = async (accountId) => {
+    try {
+      const response = await closeAccount(accountId);
+
+      if (response.success) {
+        alert('Account closed successfully.');
+        setAmounts((currentAmounts) => ({ ...currentAmounts, [accountId]: '' }));
+        await fetchAccountsForCustomer(selectedCustomer);
+        return true;
+      }
+    } catch (error) {
+      alert(error.response?.data?.message || 'Could not close account.');
+    }
+
+    return false;
+  };
+
+  const handleReopenAccount = async (accountId) => {
+    try {
+      const response = await reopenAccount(accountId);
+
+      if (response.success) {
+        alert('Account re-opened successfully.');
+        await fetchAccountsForCustomer(selectedCustomer);
+        return true;
+      }
+    } catch (error) {
+      alert(error.response?.data?.message || 'Could not re-open account.');
     }
 
     return false;
@@ -154,6 +204,8 @@ function App() {
           amounts={amounts}
           onAmountChange={handleAmountChange}
           onTransaction={handleTransaction}
+          onCloseAccount={handleCloseAccount}
+          onReopenAccount={handleReopenAccount}
           onAccountsChanged={fetchAccountsForCustomer}
           onClose={() => setSelectedCustomer(null)}
         />

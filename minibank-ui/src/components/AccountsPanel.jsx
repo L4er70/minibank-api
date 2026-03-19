@@ -8,6 +8,8 @@ function AccountsPanel({
   amounts,
   onAmountChange,
   onTransaction,
+  onCloseAccount,
+  onReopenAccount,
   onAccountsChanged,
   onClose
 }) {
@@ -60,6 +62,44 @@ function AccountsPanel({
 
     if (success && expandedAccountId === accountId) {
       await loadHistory(accountId);
+    }
+  };
+
+  const handleCloseAccountClick = async (account) => {
+    if (!account.isActive) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Close account ${account.accountNumber}? The balance must already be zero.`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    const success = await onCloseAccount(account.id);
+
+    if (success && expandedAccountId === account.id) {
+      await loadHistory(account.id);
+    }
+  };
+
+  const handleReopenAccountClick = async (account) => {
+    if (account.isActive) {
+      return;
+    }
+
+    const confirmed = window.confirm(`Re-open account ${account.accountNumber}?`);
+
+    if (!confirmed) {
+      return;
+    }
+
+    const success = await onReopenAccount(account.id);
+
+    if (success && expandedAccountId === account.id) {
+      await loadHistory(account.id);
     }
   };
 
@@ -193,6 +233,7 @@ function AccountsPanel({
             const transactions = historyByAccount[account.id] || [];
             const isExpanded = expandedAccountId === account.id;
             const isLoadingHistory = historyLoadingId === account.id;
+            const isClosed = !account.isActive;
 
             return (
               <div key={account.id} className="rounded-lg border bg-gray-50 p-4">
@@ -202,6 +243,15 @@ function AccountsPanel({
                       {account.accountType}
                     </p>
                     <p className="text-lg font-mono">{account.accountNumber}</p>
+                    <p
+                      className={`mt-1 inline-flex rounded-full px-2 py-1 text-xs font-semibold ${
+                        isClosed
+                          ? 'bg-red-100 text-red-700'
+                          : 'bg-emerald-100 text-emerald-700'
+                      }`}
+                    >
+                      {isClosed ? 'Closed' : 'Active'}
+                    </p>
                   </div>
                   <div className="text-right">
                     <p className="text-sm text-gray-500">Balance</p>
@@ -216,25 +266,48 @@ function AccountsPanel({
                     type="number"
                     min="0"
                     step="0.01"
-                    placeholder="Enter amount"
+                    placeholder={isClosed ? 'Account closed' : 'Enter amount'}
                     value={amounts[account.id] || ''}
                     onChange={(event) => onAmountChange(account.id, event.target.value)}
-                    className="w-full rounded border p-2 outline-none focus:ring-2 focus:ring-blue-500"
+                    disabled={isClosed}
+                    className="w-full rounded border p-2 outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500"
                   />
                   <div className="flex gap-2">
                     <button
                       onClick={() => handleTransactionClick(account.id, 'Deposit')}
-                      className="flex-1 rounded bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700"
+                      disabled={isClosed}
+                      className="flex-1 rounded bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:bg-gray-300"
                     >
                       Deposit
                     </button>
                     <button
                       onClick={() => handleTransactionClick(account.id, 'Withdraw')}
-                      className="flex-1 rounded bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700"
+                      disabled={isClosed}
+                      className="flex-1 rounded bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-gray-300"
                     >
                       Withdraw
                     </button>
                   </div>
+                  {isClosed ? (
+                    <button
+                      onClick={() => handleReopenAccountClick(account)}
+                      className="w-full rounded border border-emerald-200 bg-white px-4 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-50"
+                    >
+                      Re-open
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => handleCloseAccountClick(account)}
+                      className="w-full rounded border border-red-200 bg-white px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-50"
+                    >
+                      Close Account
+                    </button>
+                  )}
+                  {isClosed && (
+                    <p className="text-sm text-gray-500">
+                      Closed accounts cannot receive deposits or withdrawals.
+                    </p>
+                  )}
                   <button
                     onClick={() => toggleHistory(account.id)}
                     className="w-full rounded border border-blue-200 bg-white px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-50"

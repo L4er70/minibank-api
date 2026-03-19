@@ -15,6 +15,25 @@ namespace minibank.Controllers
             _accountService = accountService;
         }
 
+        [HttpPatch("{accountId}/reopen")]
+        public async Task<IActionResult> ReopenAccount(int accountId)
+        {
+            var result = await _accountService.ReopenAccountAsync(accountId);
+            return result.Success ? Ok(result): BadRequest(result);
+        }
+
+        [HttpPatch("{accountId}/close")]
+        public async Task<IActionResult> CloseAccount(int accountId)
+        {
+            var result = await _accountService.CloseAccountAsync(accountId);
+            if (!result.Success)
+            {
+                return BadRequest(result);
+            }
+            return Ok(result);
+            
+        }
+
         [HttpGet("customer/{customerId}")]
         public async Task<IActionResult> GetAccountByCustomerId(int customerId)
         {
@@ -54,6 +73,8 @@ namespace minibank.Controllers
             if(!result.Success)return BadRequest(result);
             return Ok(result);
         }
+
+        
     }
 
    

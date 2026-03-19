@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace minibank.Migrations
 {
     /// <inheritdoc />
-    public partial class InitalBankingSchema : Migration
+    public partial class InitialCreate : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -40,7 +40,8 @@ namespace minibank.Migrations
                     AccountType = table.Column<int>(type: "INTEGER", nullable: false),
                     BranchCode = table.Column<string>(type: "TEXT", maxLength: 10, nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "TEXT", nullable: false),
-                    CustomerId = table.Column<int>(type: "INTEGER", nullable: false)
+                    CustomerId = table.Column<int>(type: "INTEGER", nullable: false),
+                    IsActive = table.Column<bool>(type: "INTEGER", nullable: false)
                 },
                 constraints: table =>
                 {

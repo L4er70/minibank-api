@@ -9,5 +9,6 @@ namespace minibank.DTOs
     public string AccountType{get;set;} = string.Empty;
     public string BranchCode{get;set;} = string.Empty;
     public DateTime CreatedAt{get;set;}
+    public bool IsActive { get; set; }
 }
 }

@@ -43,6 +43,38 @@ namespace minibank.Tests
             mockContext.Verify(c => c.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
         }
 
+        [Fact]
+        public async Task CreateTransactionAsync_ClosedAccount_ReturnsFailure()
+        {
+            // Arrange
+            var accounts = new List<Account>
+            {
+                new Account { Id = 1, Balance = 100m, IsActive = false }
+            };
+            var mockAccounts = CreateMockDbSet(accounts);
+
+            var options = new DbContextOptionsBuilder<BankingDbContext>().Options;
+            var mockContext = new Mock<BankingDbContext>(options);
+            mockContext.Setup(c => c.Accounts).Returns(mockAccounts.Object);
+
+            var service = new AccountService(mockContext.Object);
+            var dto = new PostTransactionDto
+            {
+                AccountId = 1,
+                Amount = 50m,
+                TransactionType = TransactionType.Credit,
+                Description = "Teller deposit"
+            };
+
+            // Act
+            var response = await service.CreateTransactionAsync(dto);
+
+            // Assert
+            Assert.False(response.Success);
+            Assert.Equal("Closed accounts cannot accept transactions.", response.Message);
+            mockContext.Verify(c => c.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+        }
+
         private static Mock<DbSet<T>> CreateMockDbSet<T>(IEnumerable<T> data) where T : class
         {
             var queryable = data.AsQueryable();

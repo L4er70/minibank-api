@@ -46,7 +46,8 @@ namespace minibank.Services
                Balance = newAccount.Balance,
                Currency = newAccount.Currency.ToString(),
                AccountType = newAccount.AccountType.ToString(),
-               CreatedAt = newAccount.CreatedAt
+               CreatedAt = newAccount.CreatedAt,
+               IsActive = newAccount.IsActive
            });
            // throw new NotImplementedException();
         }
@@ -54,8 +55,7 @@ namespace minibank.Services
         public async Task<ApiResponse<TransactionDto>> CreateTransactionAsync(PostTransactionDto dto)
         {
             if (dto.Amount <= 0)return ApiResponse<TransactionDto>.FailureResponse("Amount must be greater than zero.");
-
-            using var dbTransaction = await _context.Database.BeginTransactionAsync();
+            Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction? dbTransaction = null;
 
             try{
             // Load account to validate existence and update balance.
@@ -67,10 +67,17 @@ namespace minibank.Services
                 return ApiResponse<TransactionDto>.FailureResponse("Account not found.");
             }
 
+            if (!account.IsActive)
+            {
+                return ApiResponse<TransactionDto>.FailureResponse("Closed accounts cannot accept transactions.");
+            }
+
             if (dto.TransactionType == TransactionType.Debit && account.Balance < dto.Amount)
             {
                 return ApiResponse<TransactionDto>.FailureResponse("Insufficient funds.");
             }
+
+            dbTransaction = await _context.Database.BeginTransactionAsync();
 
             // Create transaction and apply balance change in one unit of work.
             var transaction = new Transaction
@@ -105,8 +112,18 @@ namespace minibank.Services
             }
             catch (Exception)
             {
-                await dbTransaction.RollbackAsync();
+                if (dbTransaction != null)
+                {
+                    await dbTransaction.RollbackAsync();
+                }
                 return ApiResponse<TransactionDto>.FailureResponse("A database error occured. Money was not moved.");
+            }
+            finally
+            {
+                if (dbTransaction != null)
+                {
+                    await dbTransaction.DisposeAsync();
+                }
             }
         }
 
@@ -123,7 +140,8 @@ namespace minibank.Services
                 Currency = a.Currency.ToString(),
                 AccountType=a.AccountType.ToString(),
                 BranchCode = a.BranchCode,
-                CreatedAt = a.CreatedAt
+                CreatedAt = a.CreatedAt,
+                IsActive = a.IsActive
             }).ToListAsync();
             return ApiResponse<List<AccountDto>>.SuccessResponse(accounts);
             //throw new NotImplementedException();
@@ -142,7 +160,8 @@ namespace minibank.Services
                     Currency = a.Currency.ToString(),
                     AccountType = a.AccountType.ToString(),
                     BranchCode = a.BranchCode,
-                    CreatedAt = a.CreatedAt
+                    CreatedAt = a.CreatedAt,
+                    IsActive = a.IsActive
                 }
             ).FirstOrDefaultAsync();
 
@@ -174,6 +193,34 @@ namespace minibank.Services
 
             return ApiResponse<List<TransactionDto>>.SuccessResponse(transactions,"Transactions retrieved.");
             //throw new NotImplementedException();
+        }
+
+        public async Task<ApiResponse<bool>> CloseAccountAsync(int accountId)
+        {
+            var account = await _context.Accounts.FindAsync(accountId);
+            if(account == null) return ApiResponse<bool>.FailureResponse("Account not found.");
+
+            if (account.Balance != 0)
+            {
+                return ApiResponse<bool>.FailureResponse("Account balance must be zero before closing.");
+
+            }
+            account.IsActive = false;
+            await _context.SaveChangesAsync();
+
+            return ApiResponse<bool>.SuccessResponse(true,"Account closed successfully.");
+        }
+        public async Task<ApiResponse<bool>> ReopenAccountAsync(int accountId)
+        {
+            var account = await _context.Accounts.FindAsync(accountId);
+            if(account == null)return ApiResponse<bool>.FailureResponse("Account not found.");
+
+            if(account.IsActive)return ApiResponse<bool>.FailureResponse("Account is already active.");
+
+            account.IsActive=true;
+            await _context.SaveChangesAsync();
+            return ApiResponse<bool>.SuccessResponse(true,"Account re-opened successfully.");
+            
         }
     }
 }

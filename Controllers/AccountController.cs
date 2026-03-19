@@ -1,6 +1,8 @@
 using minibank.DTOs;
 using minibank.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
+using System.Text;
+using minibank.Wrappers;
 
 namespace minibank.Controllers
 {
@@ -71,6 +73,22 @@ namespace minibank.Controllers
         {
             var result = await _accountService.CreateAccountAsync(dto);
             if(!result.Success)return BadRequest(result);
+            return Ok(result);
+        }
+
+        [HttpPost("transfer")]
+        public async Task<IActionResult> TransferFunds([FromBody] TransferDto dto)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ApiResponse<bool>.FailureResponse("Invalid transfer data."));
+
+            }
+            var result = await _accountService.TransferAsync(dto);
+            if (!result.Success)
+            {
+                return BadRequest(result);
+            }
             return Ok(result);
         }
 

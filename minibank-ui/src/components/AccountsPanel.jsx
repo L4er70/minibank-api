@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import api from '../api/axios';
+import TransferModal from './TransferModal';
 
 /* eslint-disable react/prop-types */
 function AccountsPanel({
@@ -10,6 +11,7 @@ function AccountsPanel({
   onTransaction,
   onCloseAccount,
   onReopenAccount,
+  onTransferFunds,
   onAccountsChanged,
   onClose
 }) {
@@ -17,6 +19,7 @@ function AccountsPanel({
   const [historyByAccount, setHistoryByAccount] = useState({});
   const [historyLoadingId, setHistoryLoadingId] = useState(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [transferSourceAccount, setTransferSourceAccount] = useState(null);
   const [createAccountLoading, setCreateAccountLoading] = useState(false);
   const [createAccountForm, setCreateAccountForm] = useState({
     accountType: 0,
@@ -101,6 +104,28 @@ function AccountsPanel({
     if (success && expandedAccountId === account.id) {
       await loadHistory(account.id);
     }
+  };
+
+  const handleTransferClick = (account) => {
+    setTransferSourceAccount(account);
+  };
+
+  const handleTransferModalClose = () => {
+    setTransferSourceAccount(null);
+  };
+
+  const handleTransferSubmit = async (payload) => {
+    const success = await onTransferFunds(payload);
+
+    if (success && expandedAccountId === payload.fromAccountId) {
+      await loadHistory(payload.fromAccountId);
+    }
+
+    if (success && expandedAccountId === payload.toAccountId) {
+      await loadHistory(payload.toAccountId);
+    }
+
+    return success;
   };
 
   const handleCreateAccountChange = (event) => {
@@ -288,6 +313,14 @@ function AccountsPanel({
                       Withdraw
                     </button>
                   </div>
+                  {!isClosed && (
+                    <button
+                      onClick={() => handleTransferClick(account)}
+                      className="w-full rounded bg-blue-900 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-800"
+                    >
+                      Transfer Funds
+                    </button>
+                  )}
                   {isClosed ? (
                     <button
                       onClick={() => handleReopenAccountClick(account)}
@@ -375,6 +408,14 @@ function AccountsPanel({
           </button>
         </div>
       )}
+
+      <TransferModal
+        isOpen={Boolean(transferSourceAccount)}
+        sourceAccount={transferSourceAccount}
+        destinationAccounts={accounts}
+        onClose={handleTransferModalClose}
+        onSubmit={handleTransferSubmit}
+      />
     </div>
   );
 }

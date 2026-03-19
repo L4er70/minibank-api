@@ -37,6 +37,11 @@ function App() {
     return response.data;
   };
 
+  const transferFunds = async (payload) => {
+    const response = await api.post('/Account/transfer', payload);
+    return response.data;
+  };
+
   // handle transactions
   const handleTransaction = async (accountId, type) => {
     const account = accounts.find((currentAccount) => currentAccount.id === accountId);
@@ -104,6 +109,27 @@ function App() {
       }
     } catch (error) {
       alert(error.response?.data?.message || 'Could not re-open account.');
+    }
+
+    return false;
+  };
+
+  const handleTransferFunds = async (payload) => {
+    try {
+      const response = await transferFunds(payload);
+
+      if (response.success) {
+        alert('Transfer completed successfully.');
+        setAmounts((currentAmounts) => ({
+          ...currentAmounts,
+          [payload.fromAccountId]: '',
+          [payload.toAccountId]: ''
+        }));
+        await fetchAccountsForCustomer(selectedCustomer);
+        return true;
+      }
+    } catch (error) {
+      alert(error.response?.data?.message || 'Transfer failed.');
     }
 
     return false;
@@ -206,6 +232,7 @@ function App() {
           onTransaction={handleTransaction}
           onCloseAccount={handleCloseAccount}
           onReopenAccount={handleReopenAccount}
+          onTransferFunds={handleTransferFunds}
           onAccountsChanged={fetchAccountsForCustomer}
           onClose={() => setSelectedCustomer(null)}
         />

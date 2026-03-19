@@ -222,5 +222,68 @@ namespace minibank.Services
             return ApiResponse<bool>.SuccessResponse(true,"Account re-opened successfully.");
             
         }
+
+        public async Task<ApiResponse<bool>> TransferAsync(TransferDto dto)
+        {
+            if(dto.FromAccountId == dto.ToAccountId)
+            {
+                return ApiResponse<bool>.FailureResponse("Cannot transfer money to the same account.");
+            }
+            using var transaction = await _context.Database.BeginTransactionAsync();
+
+            try
+            {
+                var fromAccount = await _context.Accounts.FindAsync(dto.FromAccountId);
+                var toAccount = await _context.Accounts.FindAsync(dto.ToAccountId);
+
+                if(fromAccount == null || toAccount == null)
+                return ApiResponse<bool>.FailureResponse("One or both accounts could not be found.");
+
+                if(!fromAccount.IsActive || !toAccount.IsActive)
+                return ApiResponse<bool>.FailureResponse("Transfers cannot involve closed or inactive accounts.");
+
+                if(fromAccount.Balance < dto.Amount)
+                return ApiResponse<bool>.FailureResponse("Insufficent funds for this transfer.");
+
+                fromAccount.Balance-=dto.Amount;
+                toAccount.Balance+=dto.Amount;
+
+                var debitTransaction = new Transaction
+                {
+                    AccountId = dto.FromAccountId,
+                    Amount = dto.Amount,
+                    Type = minibank.Enums.TransactionType.Debit,
+                    TransactionDate = DateTime.UtcNow
+                };
+
+                var creditTransaction = new Transaction
+                {
+                    AccountId = dto.ToAccountId,
+                    Amount = dto.Amount,
+                    Type = minibank.Enums.TransactionType.Credit,
+                    TransactionDate = DateTime.UtcNow
+                };
+
+                _context.Transactions.Add(debitTransaction);
+                _context.Transactions.Add(creditTransaction);
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                return ApiResponse<bool>.SuccessResponse(true,"Transfer completed successfully.");
+
+            }
+            catch(Exception ex)
+            {
+                await transaction.RollbackAsync();
+
+                return ApiResponse<bool>.FailureResponse("A system error occured during the transfer. No funds were moved.");
+                
+                
+            }
+
+
+            //throw new NotImplementedException();
+        }
     }
 }

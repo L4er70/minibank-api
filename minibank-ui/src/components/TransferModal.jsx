@@ -1,5 +1,20 @@
 import { useEffect, useState } from 'react';
 
+const exchangeRates = {
+  EUR_ALL: 103.5,
+  ALL_EUR: 0.0097,
+  USD_ALL: 95.2,
+  ALL_USD: 0.105,
+  EUR_USD: 1.08,
+  USD_EUR: 0.92,
+  GBP_ALL: 111.01,
+  ALL_GBP: 0.009,
+  GBP_EUR: 1.16,
+  EUR_GBP: 0.86,
+  GBP_USD: 1.33,
+  USD_GBP: 0.75
+};
+
 /* eslint-disable react/prop-types */
 function TransferModal({
   isOpen,
@@ -24,14 +39,41 @@ function TransferModal({
     return null;
   }
 
+  const formatMoney = (value, currency) => {
+    try {
+      return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency
+      }).format(value);
+    } catch {
+      return `${Number(value).toFixed(2)} ${currency}`;
+    }
+  };
+
+  const getExchangeRate = (fromCurrency, toCurrency) => {
+    if (fromCurrency === toCurrency) {
+      return 1;
+    }
+
+    return exchangeRates[`${fromCurrency}_${toCurrency}`] ?? 1;
+  };
+
   const availableDestinations = destinationAccounts.filter(
     (account) => account.id !== sourceAccount.id
   );
+  const selectedDestinationAccount = availableDestinations.find(
+    (account) => account.id === Number(destinationAccountId)
+  );
+  const parsedAmount = parseFloat(amount);
+  const hasValidAmount = Number.isFinite(parsedAmount) && parsedAmount > 0;
+  const exchangeRate = selectedDestinationAccount
+    ? getExchangeRate(sourceAccount.currency, selectedDestinationAccount.currency)
+    : null;
+  const estimatedDestinationAmount =
+    selectedDestinationAccount && hasValidAmount ? parsedAmount * exchangeRate : null;
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-
-    const parsedAmount = parseFloat(amount);
 
     if (!destinationAccountId) {
       alert('Please choose a destination account.');
@@ -105,6 +147,20 @@ function TransferModal({
               className="w-full rounded border p-3 outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
+
+          {selectedDestinationAccount && hasValidAmount && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+              <p className="font-semibold">Estimated Conversion</p>
+              <p className="mt-2">
+                {formatMoney(parsedAmount, sourceAccount.currency)} from{' '}
+                {sourceAccount.currency} at rate {exchangeRate} is estimated to arrive as{' '}
+                <span className="font-bold">
+                  {formatMoney(estimatedDestinationAmount, selectedDestinationAccount.currency)}
+                </span>
+                .
+              </p>
+            </div>
+          )}
 
           <div className="rounded-lg border border-blue-100 bg-blue-50 p-3 text-sm text-blue-900">
             Transfers can only be made between active accounts and cannot use the same

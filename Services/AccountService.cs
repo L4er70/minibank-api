@@ -16,6 +16,30 @@ namespace minibank.Services
             _context = context;
         }
 
+        private decimal GetExchangeRate(string fromCurrency,string toCurrency)
+        {
+            if(fromCurrency == toCurrency)return 1.0m;
+
+            var rates = new Dictionary<string, decimal>
+            {
+                {"EUR_ALL",103.50m},
+                {"ALL_EUR",0.0097m},
+                {"USD_ALL",95.20m},
+                {"ALL_USD",0.105m},
+                {"EUR_USD",1.08m},
+                {"USD_EUR",0.92m},
+                {"GBP_ALL",111.01m},
+                {"ALL_GBP",0.0090m},
+                {"GBP_EUR",1.16m},
+                {"EUR_GBP",0.86m},
+                {"GBP_USD",1.33m},
+                {"USD_GBP",0.75m}
+
+            };
+            string key = $"{fromCurrency}_{toCurrency}";
+            return rates.ContainsKey(key) ? rates[key] : 1.0m;
+        }
+
         public async Task<ApiResponse<AccountDto>> CreateAccountAsync(CreateAccountDto dto)
         {
            var customerExists = await _context.Customers.AnyAsync(
@@ -245,15 +269,22 @@ namespace minibank.Services
                 if(fromAccount.Balance < dto.Amount)
                 return ApiResponse<bool>.FailureResponse("Insufficent funds for this transfer.");
 
+                decimal exchangeRate = GetExchangeRate(fromAccount.Currency.ToString(),toAccount.Currency.ToString());
+                decimal destinationAmount = dto.Amount * exchangeRate;
+
                 fromAccount.Balance-=dto.Amount;
-                toAccount.Balance+=dto.Amount;
+                toAccount.Balance+=destinationAmount;
+
+                var debitDesc = $"Transfer OUT:{dto.Amount} {fromAccount.Currency} ->{toAccount.Currency}(Rate:{exchangeRate})";
+                var creditDesc = $"Transfer IN: Received {destinationAmount}{toAccount.Currency} from {fromAccount.AccountNumber}";
 
                 var debitTransaction = new Transaction
                 {
                     AccountId = dto.FromAccountId,
                     Amount = dto.Amount,
                     Type = minibank.Enums.TransactionType.Debit,
-                    TransactionDate = DateTime.UtcNow
+                    TransactionDate = DateTime.UtcNow,
+                    Description = debitDesc
                 };
 
                 var creditTransaction = new Transaction
@@ -261,7 +292,8 @@ namespace minibank.Services
                     AccountId = dto.ToAccountId,
                     Amount = dto.Amount,
                     Type = minibank.Enums.TransactionType.Credit,
-                    TransactionDate = DateTime.UtcNow
+                    TransactionDate = DateTime.UtcNow,
+                    Description = creditDesc
                 };
 
                 _context.Transactions.Add(debitTransaction);
@@ -278,7 +310,7 @@ namespace minibank.Services
                 await transaction.RollbackAsync();
 
                 return ApiResponse<bool>.FailureResponse("A system error occured during the transfer. No funds were moved.");
-                
+
                 
             }
 

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 const exchangeRates = {
   EUR_ALL: 103.5,
@@ -26,12 +26,14 @@ function TransferModal({
   const [destinationAccountId, setDestinationAccountId] = useState('');
   const [amount, setAmount] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const isSubmittingRef = useRef(false);
 
   useEffect(() => {
     if (!isOpen) {
       setDestinationAccountId('');
       setAmount('');
       setIsSubmitting(false);
+      isSubmittingRef.current = false;
     }
   }, [isOpen]);
 
@@ -75,6 +77,11 @@ function TransferModal({
   const handleSubmit = async (event) => {
     event.preventDefault();
 
+    // Lock immediately so rapid double-clicks cannot queue a second transfer.
+    if (isSubmittingRef.current) {
+      return;
+    }
+
     if (!destinationAccountId) {
       alert('Please choose a destination account.');
       return;
@@ -85,6 +92,7 @@ function TransferModal({
       return;
     }
 
+    isSubmittingRef.current = true;
     setIsSubmitting(true);
 
     try {
@@ -98,6 +106,7 @@ function TransferModal({
         onClose();
       }
     } finally {
+      isSubmittingRef.current = false;
       setIsSubmitting(false);
     }
   };
@@ -112,7 +121,11 @@ function TransferModal({
               Source: <span className="font-semibold text-gray-700">{sourceAccount.accountNumber}</span>
             </p>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+          <button
+            onClick={onClose}
+            disabled={isSubmitting}
+            className="text-gray-400 hover:text-gray-600 disabled:cursor-not-allowed disabled:opacity-50"
+          >
             Close
           </button>
         </div>
@@ -123,6 +136,7 @@ function TransferModal({
             <select
               value={destinationAccountId}
               onChange={(event) => setDestinationAccountId(event.target.value)}
+              disabled={isSubmitting}
               className="w-full rounded border p-3 outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">Select destination account</option>
@@ -143,6 +157,7 @@ function TransferModal({
               step="0.01"
               value={amount}
               onChange={(event) => setAmount(event.target.value)}
+              disabled={isSubmitting}
               placeholder="Enter transfer amount"
               className="w-full rounded border p-3 outline-none focus:ring-2 focus:ring-blue-500"
             />
@@ -171,9 +186,10 @@ function TransferModal({
             <button
               type="button"
               onClick={onClose}
+              disabled={isSubmitting}
               className="flex-1 rounded border border-gray-200 px-4 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50"
             >
-              Cancel
+              {isSubmitting ? 'Transfer In Progress' : 'Cancel'}
             </button>
             <button
               type="submit"

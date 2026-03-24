@@ -11,11 +11,47 @@ namespace minibank.Services
     public class AccountService : IAccountService
     {
         private readonly BankingDbContext _context;
-        public AccountService(BankingDbContext context)
+        private readonly IHttpClientFactory _httpClientFactory;
+        public AccountService(BankingDbContext context,IHttpClientFactory httpClientFactory)
+
         {
             _context = context;
+            _httpClientFactory = httpClientFactory;
         }
 
+        private async Task<decimal> GetLiveExchangeRate(string from,string to)
+        {
+            if(from==to)return 1.0m;
+
+            var client = _httpClientFactory.CreateClient();
+            client.Timeout = TimeSpan.FromSeconds(10);
+            try
+            {
+                var response = await client.GetFromJsonAsync<ExchangeResponse>
+                ($"https://api.frankfurter.app/latest?from={from}&to={to}");
+
+                if(response!=null && response.Rates.ContainsKey(to))
+                {
+                    return response.Rates[to];
+                }
+            }
+            catch (TaskCanceledException)
+            {
+                throw new Exception("Exchange rate service timed out.Please try again.");
+            }
+            catch(Exception)
+            {
+               // throw new Exception("Unable to fetch live exchange rates.Transfer aborted.");
+                return GetExchangeRate(from,to);
+            }
+            return 1.0m;
+        }
+        public class ExchangeResponse
+        {
+            public string Base{get;set;}
+            public Dictionary<string,decimal>Rates{get;set;}
+        }
+        
         private decimal GetExchangeRate(string fromCurrency,string toCurrency)
         {
             if(fromCurrency == toCurrency)return 1.0m;
@@ -38,12 +74,12 @@ namespace minibank.Services
             };
             string key = $"{fromCurrency}_{toCurrency}";
             return rates.ContainsKey(key) ? rates[key] : 1.0m;
-        }
+        }  
 
         public async Task<ApiResponse<AccountDto>> CreateAccountAsync(CreateAccountDto dto)
         {
            var customerExists = await _context.Customers.AnyAsync(
-            c=>c.Id == dto.CustomerId
+            c => c.Id == dto.CustomerId
            );
            if(!customerExists) return ApiResponse<AccountDto>.FailureResponse("Customer does not exists");
 
@@ -269,7 +305,7 @@ namespace minibank.Services
                 if(fromAccount.Balance < dto.Amount)
                 return ApiResponse<bool>.FailureResponse("Insufficent funds for this transfer.");
 
-                decimal exchangeRate = GetExchangeRate(fromAccount.Currency.ToString(),toAccount.Currency.ToString());
+                decimal exchangeRate = await GetLiveExchangeRate(fromAccount.Currency.ToString(),toAccount.Currency.ToString());
                 decimal destinationAmount = dto.Amount * exchangeRate;
 
                 fromAccount.Balance-=dto.Amount;
@@ -290,7 +326,7 @@ namespace minibank.Services
                 var creditTransaction = new Transaction
                 {
                     AccountId = dto.ToAccountId,
-                    Amount = dto.Amount,
+                    Amount =destinationAmount,
                     Type = minibank.Enums.TransactionType.Credit,
                     TransactionDate = DateTime.UtcNow,
                     Description = creditDesc

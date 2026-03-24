@@ -1,7 +1,8 @@
 using System.Net;
-using System.Net.Http.Json;
+using System.Text;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using minibank.Data;
 using minibank.DTOs;
 using minibank.Enums;
@@ -149,7 +150,48 @@ namespace minibank.Tests
         }
 
         [Fact]
-        public async Task TransferAsync_WhenExchangeApiFails_ReturnsFailureAndDoesNotMoveFunds()
+        public async Task TransferAsync_CrossCurrency_UsesCachedRate_OnSecondTransfer()
+        {
+            var handler = new CountingHandler("""
+                {"amount":1.0,"base":"EUR","date":"2026-03-24","rates":{"USD":1.08}}
+                """);
+            await using var fixture = await AccountServiceFixture.CreateAsync(handler: handler);
+            fixture.Context.Customers.AddRange(
+                new Customer { Id = 1, PersonalId = "P009", FirstName = "Cache", LastName = "Source", DateOfBirth = new DateTime(1990, 1, 1) },
+                new Customer { Id = 2, PersonalId = "P010", FirstName = "Cache", LastName = "Target", DateOfBirth = new DateTime(1990, 1, 1) });
+            fixture.Context.Accounts.AddRange(
+                new Account { Id = 1, AccountNumber = "AL700", Balance = 200m, Currency = Currency.EUR, IsActive = true, CustomerId = 1 },
+                new Account { Id = 2, AccountNumber = "AL800", Balance = 10m, Currency = Currency.USD, IsActive = true, CustomerId = 2 });
+            await fixture.Context.SaveChangesAsync();
+
+            var service = fixture.CreateService();
+
+            var firstResponse = await service.TransferAsync(new TransferDto
+            {
+                FromAccountId = 1,
+                ToAccountId = 2,
+                Amount = 20m
+            });
+
+            var secondResponse = await service.TransferAsync(new TransferDto
+            {
+                FromAccountId = 1,
+                ToAccountId = 2,
+                Amount = 10m
+            });
+
+            Assert.True(firstResponse.Success);
+            Assert.True(secondResponse.Success);
+            Assert.Equal(1, handler.CallCount);
+
+            var from = await fixture.Context.Accounts.SingleAsync(a => a.Id == 1);
+            var to = await fixture.Context.Accounts.SingleAsync(a => a.Id == 2);
+            Assert.Equal(170m, from.Balance);
+            Assert.Equal(42.4m, to.Balance);
+        }
+
+        [Fact]
+        public async Task TransferAsync_WhenExchangeApiFails_UsesFallbackRate()
         {
             await using var fixture = await AccountServiceFixture.CreateAsync(handler: new ThrowingHandler());
             fixture.Context.Customers.AddRange(
@@ -168,25 +210,30 @@ namespace minibank.Tests
                 Amount = 10m
             });
 
-            Assert.False(response.Success);
-            Assert.Equal("A system error occured during the transfer. No funds were moved.", response.Message);
+            Assert.True(response.Success);
+            Assert.Equal("Transfer completed successfully.", response.Message);
 
             var from = await fixture.Context.Accounts.SingleAsync(a => a.Id == 1);
             var to = await fixture.Context.Accounts.SingleAsync(a => a.Id == 2);
-            Assert.Equal(80m, from.Balance);
-            Assert.Equal(20m, to.Balance);
-            Assert.Empty(await fixture.Context.Transactions.ToListAsync());
+            Assert.Equal(70m, from.Balance);
+            Assert.Equal(33.3m, to.Balance);
+
+            var transactions = await fixture.Context.Transactions.OrderBy(t => t.Id).ToListAsync();
+            Assert.Equal(2, transactions.Count);
+            Assert.Contains("Rate:1.33", transactions[0].Description);
         }
 
         private sealed class AccountServiceFixture : IAsyncDisposable
         {
             private readonly SqliteConnection _connection;
+            private readonly MemoryCache _cache;
 
-            private AccountServiceFixture(BankingDbContext context, SqliteConnection connection, Mock<IHttpClientFactory> httpClientFactoryMock)
+            private AccountServiceFixture(BankingDbContext context, SqliteConnection connection, Mock<IHttpClientFactory> httpClientFactoryMock, MemoryCache cache)
             {
                 Context = context;
                 _connection = connection;
                 HttpClientFactoryMock = httpClientFactoryMock;
+                _cache = cache;
             }
 
             public BankingDbContext Context { get; }
@@ -208,15 +255,17 @@ namespace minibank.Tests
                 var client = new HttpClient(handler);
                 var factory = new Mock<IHttpClientFactory>();
                 factory.Setup(x => x.CreateClient(It.IsAny<string>())).Returns(client);
+                var cache = new MemoryCache(new MemoryCacheOptions());
 
-                return new AccountServiceFixture(context, connection, factory);
+                return new AccountServiceFixture(context, connection, factory, cache);
             }
 
-            public AccountService CreateService() => new(Context, HttpClientFactoryMock.Object);
+            public AccountService CreateService() => new(Context, HttpClientFactoryMock.Object, _cache);
 
             public async ValueTask DisposeAsync()
             {
                 await Context.DisposeAsync();
+                _cache.Dispose();
                 await _connection.DisposeAsync();
             }
         }
@@ -227,7 +276,21 @@ namespace minibank.Tests
             {
                 return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
                 {
-                    Content = JsonContent.Create(System.Text.Json.JsonSerializer.Deserialize<object>(jsonResponse))
+                    Content = new StringContent(jsonResponse, Encoding.UTF8, "application/json")
+                });
+            }
+        }
+
+        private sealed class CountingHandler(string jsonResponse) : HttpMessageHandler
+        {
+            public int CallCount { get; private set; }
+
+            protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+            {
+                CallCount++;
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(jsonResponse, Encoding.UTF8, "application/json")
                 });
             }
         }

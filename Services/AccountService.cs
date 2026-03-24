@@ -5,6 +5,7 @@ using minibank.Services.Interfaces;
 using minibank.Wrappers;
 using Microsoft.EntityFrameworkCore;
 using minibank.Enums;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace minibank.Services
 {
@@ -12,16 +13,27 @@ namespace minibank.Services
     {
         private readonly BankingDbContext _context;
         private readonly IHttpClientFactory _httpClientFactory;
-        public AccountService(BankingDbContext context,IHttpClientFactory httpClientFactory)
+        private readonly IMemoryCache _cache;
+        public AccountService(BankingDbContext context,IHttpClientFactory httpClientFactory,IMemoryCache cache)
 
         {
+
             _context = context;
             _httpClientFactory = httpClientFactory;
+            _cache = cache;
         }
 
         private async Task<decimal> GetLiveExchangeRate(string from,string to)
         {
             if(from==to)return 1.0m;
+
+            string cacheKey = $"rate_{from}_{to}";
+
+            if(_cache.TryGetValue(cacheKey,out decimal cachedRate))
+            {
+                return cachedRate;
+            }
+            decimal liveRate = 1.0m;
 
             var client = _httpClientFactory.CreateClient();
             client.Timeout = TimeSpan.FromSeconds(10);
@@ -32,7 +44,7 @@ namespace minibank.Services
 
                 if(response!=null && response.Rates.ContainsKey(to))
                 {
-                    return response.Rates[to];
+                    liveRate = response.Rates[to];
                 }
             }
             catch (TaskCanceledException)
@@ -44,7 +56,12 @@ namespace minibank.Services
                // throw new Exception("Unable to fetch live exchange rates.Transfer aborted.");
                 return GetExchangeRate(from,to);
             }
-            return 1.0m;
+            var cacheEntryOptions = new MemoryCacheEntryOptions()
+            .SetAbsoluteExpiration(TimeSpan.FromMinutes(30))
+            .SetSlidingExpiration(TimeSpan.FromMinutes(10));
+
+            _cache.Set(cacheKey,liveRate,cacheEntryOptions);
+            return liveRate;
         }
         public class ExchangeResponse
         {

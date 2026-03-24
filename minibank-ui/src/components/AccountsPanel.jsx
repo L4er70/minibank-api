@@ -13,6 +13,7 @@ function AccountsPanel({
   onReopenAccount,
   onTransferFunds,
   onAccountsChanged,
+  onNotify,
   onClose
 }) {
   const [expandedAccountId, setExpandedAccountId] = useState(null);
@@ -151,7 +152,7 @@ function AccountsPanel({
       const response = await api.post('/Account', payload);
 
       if (response.data.success) {
-        alert('Account created successfully.');
+        onNotify('Account created successfully.', 'success');
         setCreateAccountForm({
           accountType: 0,
           currency: 2,
@@ -161,7 +162,7 @@ function AccountsPanel({
         await onAccountsChanged(selectedCustomer);
       }
     } catch (error) {
-      alert(error.response?.data?.message || 'Could not create account.');
+      onNotify(error.response?.data?.message || 'Could not create account.', 'error');
     } finally {
       setCreateAccountLoading(false);
     }
@@ -415,6 +416,7 @@ function AccountsPanel({
         destinationAccounts={accounts}
         onClose={handleTransferModalClose}
         onSubmit={handleTransferSubmit}
+        onNotify={onNotify}
       />
     </div>
   );

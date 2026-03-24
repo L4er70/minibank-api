@@ -9,11 +9,19 @@ import SuccessToast from './components/SuccessToast';
 
 function App() {
   const [customers, setCustomers] = useState([]);
-  const [showSuccess, setShowSuccess] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [accounts, setAccounts] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [amounts, setAmounts] = useState({});
+  const [toasts, setToasts] = useState([]);
+
+  const showToast = (message, type = 'info') => {
+    const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    setToasts((currentToasts) => [...currentToasts, { id, message, type }]);
+    window.setTimeout(() => {
+      setToasts((currentToasts) => currentToasts.filter((toast) => toast.id !== id));
+    }, 3500);
+  };
 
   const fetchAccountsForCustomer = async (customer) => {
     if (!customer) return;
@@ -47,14 +55,14 @@ function App() {
     const account = accounts.find((currentAccount) => currentAccount.id === accountId);
 
     if (account && !account.isActive) {
-      alert('This account is closed. No transactions can be made.');
+      showToast('This account is closed. No transactions can be made.', 'error');
       return false;
     }
 
     const amount = parseFloat(amounts[accountId]);
 
     if (!amount || amount <= 0) {
-      alert('Please enter a valid amount.');
+      showToast('Please enter a valid amount.', 'error');
       return false;
     }
 
@@ -69,13 +77,13 @@ function App() {
       const response = await api.post('/Account/transactions', payload);
 
       if (response.data.success) {
-        alert(`${type} successful!`);
+        showToast(`${type} successful!`, 'success');
         setAmounts((currentAmounts) => ({ ...currentAmounts, [accountId]: '' }));
         await fetchAccountsForCustomer(selectedCustomer);
         return true;
       }
     } catch (error) {
-      alert(error.response?.data?.message || 'Transaction failed');
+      showToast(error.response?.data?.message || 'Transaction failed', 'error');
     }
 
     return false;
@@ -86,13 +94,13 @@ function App() {
       const response = await closeAccount(accountId);
 
       if (response.success) {
-        alert('Account closed successfully.');
+        showToast('Account closed successfully.', 'success');
         setAmounts((currentAmounts) => ({ ...currentAmounts, [accountId]: '' }));
         await fetchAccountsForCustomer(selectedCustomer);
         return true;
       }
     } catch (error) {
-      alert(error.response?.data?.message || 'Could not close account.');
+      showToast(error.response?.data?.message || 'Could not close account.', 'error');
     }
 
     return false;
@@ -103,12 +111,12 @@ function App() {
       const response = await reopenAccount(accountId);
 
       if (response.success) {
-        alert('Account re-opened successfully.');
+        showToast('Account re-opened successfully.', 'success');
         await fetchAccountsForCustomer(selectedCustomer);
         return true;
       }
     } catch (error) {
-      alert(error.response?.data?.message || 'Could not re-open account.');
+      showToast(error.response?.data?.message || 'Could not re-open account.', 'error');
     }
 
     return false;
@@ -119,7 +127,7 @@ function App() {
       const response = await transferFunds(payload);
 
       if (response.success) {
-        alert('Transfer completed successfully.');
+        showToast('Transfer completed successfully.', 'success');
         setAmounts((currentAmounts) => ({
           ...currentAmounts,
           [payload.fromAccountId]: '',
@@ -129,7 +137,7 @@ function App() {
         return true;
       }
     } catch (error) {
-      alert(error.response?.data?.message || 'Transfer failed.');
+      showToast(error.response?.data?.message || 'Transfer failed.', 'error');
     }
 
     return false;
@@ -196,19 +204,17 @@ function App() {
         // Clear form and refresh list
         setFormData({ firstName: '', lastName: '', personalId: '' });
         fetchCustomers(); 
-        //alert("Customer registered successfully!");
-        setShowSuccess(true);
-        setTimeout(() => setShowSuccess(false), 3000);
+        showToast('Customer registered successfully.', 'success');
       }
     } catch (error) {
-      alert("Registration failed. Check if Personal ID already exists.");
+      showToast('Registration failed. Check if Personal ID already exists.', 'error');
       console.error(error);
     }
   };
 
   return (
     <div className="min-h-screen bg-gray-50 p-8 flex justify-center">
-      <SuccessToast show={showSuccess} message="✅ Customer Registered Successfully!" />
+      <SuccessToast toasts={toasts} />
       <div className="w-full max-w-6xl">
         <Header />
         <RegisterForm
@@ -234,6 +240,7 @@ function App() {
           onReopenAccount={handleReopenAccount}
           onTransferFunds={handleTransferFunds}
           onAccountsChanged={fetchAccountsForCustomer}
+          onNotify={showToast}
           onClose={() => setSelectedCustomer(null)}
         />
       </div>

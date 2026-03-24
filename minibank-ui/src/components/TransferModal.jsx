@@ -21,7 +21,8 @@ function TransferModal({
   sourceAccount,
   destinationAccounts,
   onClose,
-  onSubmit
+  onSubmit,
+  onNotify
 }) {
   const [destinationAccountId, setDestinationAccountId] = useState('');
   const [amount, setAmount] = useState('');
@@ -83,12 +84,12 @@ function TransferModal({
     }
 
     if (!destinationAccountId) {
-      alert('Please choose a destination account.');
+      onNotify('Please choose a destination account.', 'error');
       return;
     }
 
     if (!parsedAmount || parsedAmount <= 0) {
-      alert('Please enter a valid transfer amount.');
+      onNotify('Please enter a valid transfer amount.', 'error');
       return;
     }
 

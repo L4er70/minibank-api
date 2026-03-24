@@ -13,5 +13,6 @@ namespace minibank.Services.Interfaces
         Task<ApiResponse<bool>> ReopenAccountAsync(int accountId);
 
         Task<ApiResponse<bool>> TransferAsync(TransferDto dto);
+        Task<ApiResponse<bool>> TransferToCustomerAsync(CrossCustomerTransferDto dto);
     }
 }

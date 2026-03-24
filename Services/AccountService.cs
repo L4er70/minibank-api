@@ -36,7 +36,7 @@ namespace minibank.Services
             decimal liveRate = 1.0m;
 
             var client = _httpClientFactory.CreateClient();
-            client.Timeout = TimeSpan.FromSeconds(10);
+            client.Timeout = TimeSpan.FromSeconds(15);
             try
             {
                 var response = await client.GetFromJsonAsync<ExchangeResponse>
@@ -368,6 +368,58 @@ namespace minibank.Services
             }
 
 
+            //throw new NotImplementedException();
+        }
+
+        public async Task<ApiResponse<bool>> TransferToCustomerAsync(CrossCustomerTransferDto dto)
+        {
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                var fromAccount = await _context.Accounts.FindAsync(dto.FromAccountId);
+
+                var toAccount = await _context.Accounts
+                .FirstOrDefaultAsync(a => a.AccountNumber ==dto.ToAccounNumber);
+
+                if(fromAccount == null ) return ApiResponse<bool>.FailureResponse("Source account not found.");
+                if(toAccount ==null)return ApiResponse<bool>.FailureResponse("Destination account number is invalid.");
+                if(fromAccount.Id==toAccount.Id)return ApiResponse<bool>.FailureResponse("Cannot transfer to the same account.");
+                if(fromAccount.Balance<dto.Amount)return ApiResponse<bool>.FailureResponse("Insufficet funds.");
+                if(!fromAccount.IsActive || !toAccount.IsActive)return ApiResponse<bool>.FailureResponse("One or both accounts are inactive.");
+
+                decimal ecxhangeRate = await GetLiveExchangeRate(fromAccount.Currency.ToString(),toAccount.Currency.ToString());
+                decimal convertedAmount = dto.Amount*ecxhangeRate;
+
+                fromAccount.Balance -=dto.Amount;
+                toAccount.Balance+=convertedAmount;
+
+                _context.Transactions.Add(new Transaction
+                {
+                    AccountId = dto.FromAccountId,
+                    Amount = dto.Amount,
+                    Type = minibank.Enums.TransactionType.Debit,
+                    Description = $"Outgoing Transfer to {toAccount.AccountNumber}",
+                    TransactionDate = DateTime.UtcNow
+                });
+
+                _context.Transactions.Add(new Transaction
+                {
+                    AccountId=toAccount.Id,
+                    Amount = convertedAmount,
+                    Type = minibank.Enums.TransactionType.Credit,
+                    Description = $"Incoming Transfer from {fromAccount.AccountNumber}",
+                    TransactionDate = DateTime.UtcNow
+                });
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                return ApiResponse<bool>.SuccessResponse(true,"Cross-Customer Transfer Successful");
+            }
+            catch (Exception)
+            {
+                await transaction.RollbackAsync();
+                return ApiResponse<bool>.FailureResponse("System error during transfer.");
+            }
             //throw new NotImplementedException();
         }
     }

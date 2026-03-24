@@ -46,7 +46,8 @@ function App() {
   };
 
   const transferFunds = async (payload) => {
-    const response = await api.post('/Account/transfer', payload);
+    const endpoint = payload.toAccounNumber ? '/Account/transfer-external' : '/Account/transfer';
+    const response = await api.post(endpoint, payload);
     return response.data;
   };
 
@@ -128,11 +129,18 @@ function App() {
 
       if (response.success) {
         showToast('Transfer completed successfully.', 'success');
-        setAmounts((currentAmounts) => ({
-          ...currentAmounts,
-          [payload.fromAccountId]: '',
-          [payload.toAccountId]: ''
-        }));
+        setAmounts((currentAmounts) => {
+          const nextAmounts = {
+            ...currentAmounts,
+            [payload.fromAccountId]: ''
+          };
+
+          if (payload.toAccountId) {
+            nextAmounts[payload.toAccountId] = '';
+          }
+
+          return nextAmounts;
+        });
         await fetchAccountsForCustomer(selectedCustomer);
         return true;
       }

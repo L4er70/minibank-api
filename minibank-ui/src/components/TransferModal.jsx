@@ -24,14 +24,18 @@ function TransferModal({
   onSubmit,
   onNotify
 }) {
+  const [transferMode, setTransferMode] = useState('myAccounts');
   const [destinationAccountId, setDestinationAccountId] = useState('');
+  const [destinationAccountNumber, setDestinationAccountNumber] = useState('');
   const [amount, setAmount] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isSubmittingRef = useRef(false);
 
   useEffect(() => {
     if (!isOpen) {
+      setTransferMode('myAccounts');
       setDestinationAccountId('');
+      setDestinationAccountNumber('');
       setAmount('');
       setIsSubmitting(false);
       isSubmittingRef.current = false;
@@ -83,9 +87,23 @@ function TransferModal({
       return;
     }
 
-    if (!destinationAccountId) {
-      onNotify('Please choose a destination account.', 'error');
-      return;
+    if (transferMode === 'myAccounts') {
+      if (!destinationAccountId) {
+        onNotify('Please choose a destination account.', 'error');
+        return;
+      }
+    } else {
+      const trimmedAccountNumber = destinationAccountNumber.trim().toUpperCase();
+
+      if (!trimmedAccountNumber) {
+        onNotify('Please enter the destination account number.', 'error');
+        return;
+      }
+
+      if (trimmedAccountNumber === sourceAccount.accountNumber.toUpperCase()) {
+        onNotify('You cannot transfer to the same account number.', 'error');
+        return;
+      }
     }
 
     if (!parsedAmount || parsedAmount <= 0) {
@@ -97,11 +115,20 @@ function TransferModal({
     setIsSubmitting(true);
 
     try {
-      const success = await onSubmit({
-        fromAccountId: sourceAccount.id,
-        toAccountId: Number(destinationAccountId),
-        amount: parsedAmount
-      });
+      const payload =
+        transferMode === 'myAccounts'
+          ? {
+              fromAccountId: sourceAccount.id,
+              toAccountId: Number(destinationAccountId),
+              amount: parsedAmount
+            }
+          : {
+              fromAccountId: sourceAccount.id,
+              toAccounNumber: destinationAccountNumber.trim().toUpperCase(),
+              amount: parsedAmount
+            };
+
+      const success = await onSubmit(payload);
 
       if (success) {
         onClose();
@@ -132,22 +159,64 @@ function TransferModal({
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="rounded-xl bg-slate-100 p-1">
+            <div className="grid grid-cols-2 gap-1">
+              <button
+                type="button"
+                onClick={() => setTransferMode('myAccounts')}
+                disabled={isSubmitting}
+                className={`rounded-lg px-3 py-2 text-sm font-semibold transition ${
+                  transferMode === 'myAccounts'
+                    ? 'bg-white text-slate-900 shadow-sm'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                My Accounts
+              </button>
+              <button
+                type="button"
+                onClick={() => setTransferMode('otherCustomer')}
+                disabled={isSubmitting}
+                className={`rounded-lg px-3 py-2 text-sm font-semibold transition ${
+                  transferMode === 'otherCustomer'
+                    ? 'bg-white text-slate-900 shadow-sm'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                Other Customer
+              </button>
+            </div>
+          </div>
+
           <div>
-            <label className="mb-1 block text-sm font-semibold text-gray-700">Destination</label>
-            <select
-              value={destinationAccountId}
-              onChange={(event) => setDestinationAccountId(event.target.value)}
-              disabled={isSubmitting}
-              className="w-full rounded border p-3 outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">Select destination account</option>
-              {availableDestinations.map((account) => (
-                <option key={account.id} value={account.id} disabled={!account.isActive}>
-                  {account.accountNumber} · {account.accountType} ·{' '}
-                  {!account.isActive ? 'Closed' : `${account.balance} ${account.currency}`}
-                </option>
-              ))}
-            </select>
+            <label className="mb-1 block text-sm font-semibold text-gray-700">
+              {transferMode === 'myAccounts' ? 'Destination' : 'Account Number / IBAN'}
+            </label>
+            {transferMode === 'myAccounts' ? (
+              <select
+                value={destinationAccountId}
+                onChange={(event) => setDestinationAccountId(event.target.value)}
+                disabled={isSubmitting}
+                className="w-full rounded border p-3 outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Select destination account</option>
+                {availableDestinations.map((account) => (
+                  <option key={account.id} value={account.id} disabled={!account.isActive}>
+                    {account.accountNumber} · {account.accountType} ·{' '}
+                    {!account.isActive ? 'Closed' : `${account.balance} ${account.currency}`}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <input
+                type="text"
+                value={destinationAccountNumber}
+                onChange={(event) => setDestinationAccountNumber(event.target.value)}
+                disabled={isSubmitting}
+                placeholder="Type destination account number"
+                className="w-full rounded border p-3 uppercase outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            )}
           </div>
 
           <div>
@@ -164,7 +233,7 @@ function TransferModal({
             />
           </div>
 
-          {selectedDestinationAccount && hasValidAmount && (
+          {transferMode === 'myAccounts' && selectedDestinationAccount && hasValidAmount && (
             <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
               <p className="font-semibold">Estimated Conversion</p>
               <p className="mt-2">
@@ -175,6 +244,14 @@ function TransferModal({
                 </span>
                 .
               </p>
+            </div>
+          )}
+
+          {transferMode === 'otherCustomer' && hasValidAmount && (
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
+              The destination account will be resolved by account number when the teller submits
+              the transfer. Exchange rate and destination currency will be determined by that
+              account.
             </div>
           )}
 

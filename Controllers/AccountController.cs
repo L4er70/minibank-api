@@ -92,6 +92,16 @@ namespace minibank.Controllers
             return Ok(result);
         }
 
+        [HttpPost("transfer-external")]
+        public async Task<IActionResult> TransferToExternal([FromBody] CrossCustomerTransferDto dto)
+        {
+            if(!ModelState.IsValid)return BadRequest(ApiResponse<bool>.FailureResponse("Invalid data."));
+            var result = await _accountService.TransferToCustomerAsync(dto);
+
+            if(!result.Success) return BadRequest(result);
+            return Ok(result);
+        }
+
         
     }
 

@@ -422,5 +422,38 @@ namespace minibank.Services
             }
             //throw new NotImplementedException();
         }
+
+        public async Task<ApiResponse<AccountResolveDto>> ResolveAccountAsync(string accountNUmber)
+        {
+            var normalizedAccountNumber = accountNUmber.Trim().ToUpperInvariant();
+
+            var account = await _context.Accounts
+                .Include(a => a.Customer)
+                .FirstOrDefaultAsync(a => a.AccountNumber == normalizedAccountNumber);
+
+            if (account == null)
+            {
+                return ApiResponse<AccountResolveDto>.FailureResponse("Destination account number is invalid.");
+            }
+
+            static string MaskName(string value)
+            {
+                if (string.IsNullOrWhiteSpace(value))
+                {
+                    return string.Empty;
+                }
+
+                return value.Length == 1
+                    ? value.ToUpperInvariant()
+                    : $"{char.ToUpperInvariant(value[0])}{new string('*', value.Length - 1)}";
+            }
+
+            return ApiResponse<AccountResolveDto>.SuccessResponse(new AccountResolveDto
+            {
+                AccountId = account.Id,
+                MaskedName = $"{MaskName(account.Customer.FirstName)} {MaskName(account.Customer.LastName)}",
+                Currency = account.Currency.ToString()
+            });
+        }
     }
 }

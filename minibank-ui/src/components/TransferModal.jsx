@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import api from '../api/axios';
 
 const exchangeRates = {
   EUR_ALL: 103.5,
@@ -27,6 +28,8 @@ function TransferModal({
   const [transferMode, setTransferMode] = useState('myAccounts');
   const [destinationAccountId, setDestinationAccountId] = useState('');
   const [destinationAccountNumber, setDestinationAccountNumber] = useState('');
+  const [resolvedDestination, setResolvedDestination] = useState(null);
+  const [isResolvingDestination, setIsResolvingDestination] = useState(false);
   const [amount, setAmount] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isSubmittingRef = useRef(false);
@@ -36,6 +39,8 @@ function TransferModal({
       setTransferMode('myAccounts');
       setDestinationAccountId('');
       setDestinationAccountNumber('');
+      setResolvedDestination(null);
+      setIsResolvingDestination(false);
       setAmount('');
       setIsSubmitting(false);
       isSubmittingRef.current = false;
@@ -79,6 +84,32 @@ function TransferModal({
   const estimatedDestinationAmount =
     selectedDestinationAccount && hasValidAmount ? parsedAmount * exchangeRate : null;
 
+  const resolveDestinationAccount = async () => {
+    const trimmedAccountNumber = destinationAccountNumber.trim().toUpperCase();
+
+    if (!trimmedAccountNumber) {
+      setResolvedDestination(null);
+      return;
+    }
+
+    if (trimmedAccountNumber === sourceAccount.accountNumber.toUpperCase()) {
+      setResolvedDestination(null);
+      return;
+    }
+
+    setIsResolvingDestination(true);
+
+    try {
+      const response = await api.get(`/Account/resolve/${encodeURIComponent(trimmedAccountNumber)}`);
+      setResolvedDestination(response.data.data ?? null);
+    } catch (error) {
+      setResolvedDestination(null);
+      onNotify(error.response?.data?.message || 'Could not resolve account number.', 'error');
+    } finally {
+      setIsResolvingDestination(false);
+    }
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
 
@@ -102,6 +133,11 @@ function TransferModal({
 
       if (trimmedAccountNumber === sourceAccount.accountNumber.toUpperCase()) {
         onNotify('You cannot transfer to the same account number.', 'error');
+        return;
+      }
+
+      if (!resolvedDestination) {
+        onNotify('Please finish entering a valid destination account number.', 'error');
         return;
       }
     }
@@ -211,7 +247,11 @@ function TransferModal({
               <input
                 type="text"
                 value={destinationAccountNumber}
-                onChange={(event) => setDestinationAccountNumber(event.target.value)}
+                onChange={(event) => {
+                  setDestinationAccountNumber(event.target.value.toUpperCase());
+                  setResolvedDestination(null);
+                }}
+                onBlur={resolveDestinationAccount}
                 disabled={isSubmitting}
                 placeholder="Type destination account number"
                 className="w-full rounded border p-3 uppercase outline-none focus:ring-2 focus:ring-blue-500"
@@ -247,11 +287,20 @@ function TransferModal({
             </div>
           )}
 
-          {transferMode === 'otherCustomer' && hasValidAmount && (
+          {transferMode === 'otherCustomer' && (
             <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
-              The destination account will be resolved by account number when the teller submits
-              the transfer. Exchange rate and destination currency will be determined by that
-              account.
+              {isResolvingDestination ? (
+                <p>Looking up destination account...</p>
+              ) : resolvedDestination ? (
+                <p className="font-semibold text-slate-900">
+                  Transferring to: {resolvedDestination.maskedName} ({resolvedDestination.currency})
+                </p>
+              ) : (
+                <p>
+                  Enter the destination account number, then move out of the field to verify the
+                  receiving customer before submitting.
+                </p>
+              )}
             </div>
           )}
 

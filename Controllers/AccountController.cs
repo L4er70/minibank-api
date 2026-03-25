@@ -61,6 +61,14 @@ namespace minibank.Controllers
             return Ok(result);
         }
 
+        [HttpGet("resolve/{accountNumber}")]
+        public async Task<IActionResult> ResolveAccount(string accountNumber)
+        {
+            var result = await _accountService.ResolveAccountAsync(accountNumber);
+            if (!result.Success) return NotFound(result);
+            return Ok(result);
+        }
+
         [HttpPost("transactions")]
         public async Task<IActionResult> CreateTransaction([FromBody] PostTransactionDto dto)
         {
@@ -101,6 +109,9 @@ namespace minibank.Controllers
             if(!result.Success) return BadRequest(result);
             return Ok(result);
         }
+
+
+        
 
         
     }

@@ -14,5 +14,8 @@ namespace minibank.Services.Interfaces
 
         Task<ApiResponse<bool>> TransferAsync(TransferDto dto);
         Task<ApiResponse<bool>> TransferToCustomerAsync(CrossCustomerTransferDto dto);
+        Task<ApiResponse<AccountResolveDto>>ResolveAccountAsync(string accountNUmber);
+        
+        
     }
 }

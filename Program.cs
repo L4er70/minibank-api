@@ -6,7 +6,7 @@ using minibank.Services;
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddDbContext<BankingDbContext>(options =>
-options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 builder.Services.AddScoped<ICustomerService,CustomerService>();
 builder.Services.AddScoped<IAccountService,AccountService>();
 builder.Services.AddCors(options =>
@@ -49,5 +49,4 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
-
 

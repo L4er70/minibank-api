@@ -1,5 +1,6 @@
 using minibank.Enums;
 using minibank.Models;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace minibank.Data
@@ -10,7 +11,7 @@ namespace minibank.Data
         {
             using var context = serviceProvider.GetRequiredService<BankingDbContext>();
 
-            context.Database.EnsureCreated();
+            context.Database.Migrate();
 
             if (context.Customers.Any() || context.Accounts.Any() || context.Transactions.Any())
             {

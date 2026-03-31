@@ -1,10 +1,10 @@
 # MiniBank API
 
-Simple ASP.NET Core Web API for managing customers, accounts, and transactions using SQLite.
+Simple ASP.NET Core Web API for managing customers, accounts, and transactions using PostgreSQL via the Npgsql EF Core provider.
 
 ## Requirements
 - .NET SDK 8.0
-- SQLite (bundled via EF Core SQLite provider)
+- PostgreSQL
 
 ## Quick start
 1. Restore and run:
@@ -16,7 +16,7 @@ Simple ASP.NET Core Web API for managing customers, accounts, and transactions u
 
 ## Configuration
 - Connection string lives in `appsettings.json` under `ConnectionStrings:DefaultConnection`.
-- The default database file is `banking.db` in the project root.
+- The default connection string targets a local PostgreSQL database named `minibank` on port `5432`.
 
 ## API surface (high level)
 - Customers
@@ -35,4 +35,5 @@ In Development, Swagger UI is enabled at `/swagger`.
 
 ## Notes
 - The app seeds the database on startup via `DbInitializer.Initialize(...)`.
+- Startup applies EF Core migrations automatically before seeding.
 - HTTPS redirection is currently disabled in `Program.cs`.

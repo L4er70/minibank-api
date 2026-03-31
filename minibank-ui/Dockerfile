@@ -1,4 +1,4 @@
-# Stage 1: Build (The "Kitchen")
+# Stage 1: Build with Node
 FROM node:20-alpine AS build
 WORKDIR /app
 COPY package*.json ./
@@ -6,9 +6,11 @@ RUN npm install
 COPY . .
 RUN npm run build
 
-# Stage 2: Serve (The "Counter")
+# Stage 2: Serve with Nginx
 FROM nginx:alpine
-# Copy the compiled 'build' folder to Nginx's public directory
-COPY --from=build /app/build /usr/share/nginx/html
+# VITE specific: copy from 'dist' instead of 'build'
+COPY --from=build /app/dist /usr/share/nginx/html
+# Optional: Copy a custom nginx config if you use React Router
+# COPY nginx.conf /etc/nginx/conf.d/default.conf
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
